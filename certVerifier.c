@@ -123,6 +123,7 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	X509_NAME	*certsubject	= NULL;
 
 	int ret;
+	char res_string[0x20] = {0};
 
 	// These function calls initialize openssl for correct work.
 	
@@ -142,7 +143,7 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	
 		// Store CA from file to x509 store ctx object
 		
-		if(!(ret = X509_STORE_load_locations(store, NULL, openssldir)))
+		if(openssldir && !(ret = X509_STORE_load_locations(store, NULL, openssldir)))
 			BIO_printf(outbio,"Error loading root Certificates\n");
 	}
 
@@ -206,9 +207,11 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	
 	ret = X509_verify_cert(vrfy_ctx);
 
-	if( ret == 0 || ret == 1)
-		BIO_printf(outbio, "Verification result: %s\n",
-				X509_verify_cert_error_string(X509_STORE_CTX_get_error(vrfy_ctx)));
+	if( ret == 0 || ret == 1){
+		strncpy(res_string, X509_verify_cert_error_string(X509_STORE_CTX_get_error(vrfy_ctx)), 0x20);
+		res_string[0x19] = '\0';
+		BIO_printf(outbio, "Verification result: %s\n", res_string);
+	}
 	
 	if(ret == 0){
 		err_cert  = X509_STORE_CTX_get_current_cert(vrfy_ctx);
@@ -225,7 +228,7 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	X509_free(cert);
 	BIO_free_all(crtmbio);
 	BIO_free_all(outbio);
-	return ret;
+	return ret | (strcmp(res_string, "self signed certificate") == 0);
 }
 
 int main(int argc, char *argv[]){
@@ -279,6 +282,7 @@ int main(int argc, char *argv[]){
 		fclose(fileptr);
 		
 		ret = verify(payload,filelen,openssldir);
+		//ret = verify(payload,filelen,NULL);
 		if(ret == 1)
 			valid_count++;
 		else
