@@ -7,5 +7,6 @@
 *.cmd
 synfilter/filter/filter
 netflow/c/netflow
+certVerifier
 
 dns_profiling/nfqueue-1.0.3/caller/*
