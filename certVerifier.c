@@ -199,6 +199,7 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	BIO_printf(outbio, "Server Cert:\n");
 	X509_NAME_print_ex(outbio, certsubject, 0, XN_FLAG_MULTILINE);
 	BIO_printf(outbio, "\n");
+    BIO_printf(outbio, "Signature Algorithm:\t%s\n", getSigAlgo(cert));
 	BIO_printf(outbio, "\n");
 
 	certCount--;
@@ -206,10 +207,8 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 		certsubject = X509_NAME_new();
 		certsubject = X509_get_subject_name(tmpcert);
 
-        BIO_printf(outbio, "Signature Algorithm:\t%s\n", getSigAlgo(tmpcert));
-        
-
 		BIO_printf(outbio, "Intermediate Cert %d:\n",certCount);
+        BIO_printf(outbio, "Signature Algorithm:\t%s\n", getSigAlgo(tmpcert));
 
 		X509_NAME_print_ex(outbio, certsubject, 0, XN_FLAG_MULTILINE);
 		BIO_printf(outbio, "\n");
