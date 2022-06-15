@@ -108,6 +108,32 @@ char* extractCA(unsigned char* payload, unsigned long payload_len){
 	return cert;
 }
 
+char *getSigAlgo(X509 *cert){
+        int mdnid;
+        int pknid;
+
+        if(X509_get_signature_info(cert,&mdnid,&pknid,NULL,NULL) == 0){
+                perror("X509_get_signature_info");
+                return NULL;
+        }
+
+        const char *md = OBJ_nid2ln(mdnid);
+        const char *pk = OBJ_nid2ln(pknid);
+
+        ssize_t lmd = strlen(md);
+        ssize_t lpk = strlen(pk);
+
+        char *res = (char*)malloc(sizeof(char) * (lmd + lpk + 1 + 6));
+        strncpy(res,md,lmd);
+        strcat(res,"_with_");
+        strcat(res,pk);
+        
+        return res;
+}
+
+        
+
+
 int verify(unsigned char* payload, unsigned long payload_len, const char *openssldir){
 	
 	char *certStr = NULL;
@@ -179,7 +205,12 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	while((tmpcert = PEM_read_bio_X509(crtmbio,0,0,0))){	// Push the certificate chain to intermediate cert stack
 		certsubject = X509_NAME_new();
 		certsubject = X509_get_subject_name(tmpcert);
+
+        BIO_printf(outbio, "Signature Algorithm:\t%s\n", getSigAlgo(tmpcert));
+        
+
 		BIO_printf(outbio, "Intermediate Cert %d:\n",certCount);
+
 		X509_NAME_print_ex(outbio, certsubject, 0, XN_FLAG_MULTILINE);
 		BIO_printf(outbio, "\n");
 		BIO_printf(outbio, "\n");
