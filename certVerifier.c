@@ -108,7 +108,7 @@ char* extractCA(unsigned char* payload, unsigned long payload_len){
 	return cert;
 }
 
-char *getSigAlgo(X509 *cert){
+char **getSigAlgo(X509 *cert){
         int mdnid;
         int pknid;
 
@@ -120,13 +120,9 @@ char *getSigAlgo(X509 *cert){
         const char *md = OBJ_nid2ln(mdnid);
         const char *pk = OBJ_nid2ln(pknid);
 
-        ssize_t lmd = strlen(md);
-        ssize_t lpk = strlen(pk);
-
-        char *res = (char*)malloc(sizeof(char) * (lmd + lpk + 1 + 6));
-        strncpy(res,md,lmd);
-        strcat(res,"_with_");
-        strcat(res,pk);
+        char **res = (char**)malloc(sizeof(char*) * 2);
+        res[0] = md;
+        res[1] = pk;
         
         return res;
 }
@@ -147,6 +143,7 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	STACK_OF(X509)	*immCert	= NULL;
 
 	X509_NAME	*certsubject	= NULL;
+    char **sigAlgo = NULL;
 
 	int ret;
 	char res_string[0x20] = {0};
@@ -199,7 +196,8 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	BIO_printf(outbio, "Server Cert:\n");
 	X509_NAME_print_ex(outbio, certsubject, 0, XN_FLAG_MULTILINE);
 	BIO_printf(outbio, "\n");
-    BIO_printf(outbio, "Signature Algorithm:\t%s\n", getSigAlgo(cert));
+    sigAlgo = getSigAlgo(cert);
+    BIO_printf(outbio, "Signature Algorithm:\t%s_with_%s\n", sigAlgo[0],sigAlgo[1]);
 	BIO_printf(outbio, "\n");
 
 	certCount--;
@@ -207,8 +205,9 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 		certsubject = X509_NAME_new();
 		certsubject = X509_get_subject_name(tmpcert);
 
+        sigAlgo = getSigAlgo(tmpcert);
 		BIO_printf(outbio, "Intermediate Cert %d:\n",certCount);
-        BIO_printf(outbio, "Signature Algorithm:\t%s\n", getSigAlgo(tmpcert));
+        BIO_printf(outbio, "Signature Algorithm:\t%s_with_%s\n", sigAlgo[0],sigAlgo[1]);
 
 		X509_NAME_print_ex(outbio, certsubject, 0, XN_FLAG_MULTILINE);
 		BIO_printf(outbio, "\n");
