@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -127,8 +128,41 @@ char **getSigAlgo(X509 *cert){
         return res;
 }
 
-        
+int isExpired(X509 *cert){
+    time_t now;
+    ASN1_TIME *notbefore = NULL;
+    ASN1_TIME *notafter = NULL;
+    int valid = 0;
+    int res;
 
+    time(&now);
+    notbefore = X509_getm_notBefore(cert);
+    notafter = X509_getm_notAfter(cert);
+
+    res = ASN1_TIME_cmp_time_t(notbefore, now);
+    switch(res){
+        case 1:                // current time is before the given date
+        case -2:                // error
+            valid = 1;
+            break;
+        default:
+            valid = valid;
+            break;
+    }
+
+    res = ASN1_TIME_cmp_time_t(notafter, now);
+    switch(res){
+        case -1:
+        case -2:
+            valid = 1;
+            break;
+        default:
+            valid = valid;
+            break;
+    }
+    
+    return valid;
+}
 
 int verify(unsigned char* payload, unsigned long payload_len, const char *openssldir){
 	
@@ -198,21 +232,36 @@ int verify(unsigned char* payload, unsigned long payload_len, const char *openss
 	BIO_printf(outbio, "\n");
     sigAlgo = getSigAlgo(cert);
     BIO_printf(outbio, "Signature Algorithm:\t%s_with_%s\n", sigAlgo[0],sigAlgo[1]);
+    BIO_printf(outbio, "Time Verfication:\t");
+    if(isExpired(cert)){
+            BIO_printf(outbio,"Expired\n");
+    }
+    else{
+            BIO_printf(outbio,"Valid\n");
+    }
 	BIO_printf(outbio, "\n");
 
 	certCount--;
 	while((tmpcert = PEM_read_bio_X509(crtmbio,0,0,0))){	// Push the certificate chain to intermediate cert stack
+
 		certsubject = X509_NAME_new();
 		certsubject = X509_get_subject_name(tmpcert);
 
         sigAlgo = getSigAlgo(tmpcert);
 		BIO_printf(outbio, "Intermediate Cert %d:\n",certCount);
         BIO_printf(outbio, "Signature Algorithm:\t%s_with_%s\n", sigAlgo[0],sigAlgo[1]);
-
+        BIO_printf(outbio, "Time Verfication:\t");
+        if(isExpired(tmpcert)){
+                BIO_printf(outbio,"Expired\n");
+        }
+        else{
+                BIO_printf(outbio,"Valid\n");
+        }
+        /*
 		X509_NAME_print_ex(outbio, certsubject, 0, XN_FLAG_MULTILINE);
 		BIO_printf(outbio, "\n");
+        */
 		BIO_printf(outbio, "\n");
-
 		sk_X509_push(immCert,tmpcert);
 		certCount--;
 	}
