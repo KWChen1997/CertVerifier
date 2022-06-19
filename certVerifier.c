@@ -141,23 +141,21 @@ int isExpired(X509 *cert){
 
     res = ASN1_TIME_cmp_time_t(notbefore, now);
     switch(res){
-        case 1:                // current time is before the given date
-        case -2:                // error
-            valid = 1;
+        case -1:                // current time is after the given date
+            valid = valid;
             break;
         default:
-            valid = valid;
+            valid = 1;
             break;
     }
 
     res = ASN1_TIME_cmp_time_t(notafter, now);
     switch(res){
-        case -1:
-        case -2:
-            valid = 1;
+        case 1:
+            valid = valid;
             break;
         default:
-            valid = valid;
+            valid = 1;
             break;
     }
     
